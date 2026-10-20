@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>怎麼拌！？What is the mix?</title>
+  <meta name="description" content="《食物戰爭｜怎麼拌！？》吃法人格測驗">
+  <meta name="theme-color" content="#1E8FE0">
+  <!-- 開發期間不讓搜尋引擎收錄；正式對外發布時刪掉這一行 -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+TC:wght@400;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="frame">
+    <div id="stage" class="stage bg-cover">
+      <header id="hud" class="hud" hidden>
+        <button type="button" id="btn-back" class="hud-btn" aria-label="回上一題">◀ 上一題</button>
+        <div class="progress" role="progressbar" aria-label="作答進度">
+          <i id="progress-bar"></i>
+        </div>
+        <span id="progress-text" class="progress-text">0 / 13</span>
+      </header>
+      <div class="toggles">
+        <button type="button" id="btn-music" class="hud-btn" aria-pressed="false">♪ 關</button>
+        <button type="button" id="btn-anim" class="hud-btn" aria-pressed="true">動畫 開</button>
+      </div>
+      <div id="view" class="view" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <div id="save-dialog" class="save-dialog" role="dialog" aria-modal="true" aria-label="存成圖片" hidden>
+    <div class="save-box">
+      <p>長按圖片即可儲存或分享</p>
+      <img alt="我的吃法人格結果圖">
+      <button type="button" class="btn-sub">關閉</button>
+    </div>
+  </div>
+
+  <!-- 音樂檔之後提供：放到 assets/bgm.mp3 即可 -->
+  <audio id="bgm" src="assets/bgm.mp3" loop preload="none"></audio>
+
+  <script src="js/data.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# 本機與系統檔
+.DS_Store
+Thumbs.db
+desktop.ini
+# 任何密語或金鑰檔都不要進版控
+*key*.txt
+*.secret
