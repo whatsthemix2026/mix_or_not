@@ -218,7 +218,7 @@
     view.innerHTML = `
       <section class="res-card" aria-labelledby="res-name">
         <p class="res-eyebrow">你的吃法人格是</p>
-        <h2 id="res-name">${T.emoji} ${esc(T.name)}</h2>
+        <h2 id="res-name">${esc(T.name)}</h2>
         ${C ? `
         <div class="res-char"><img src="${esc(stillOnly() ? (C.still || C.img) : C.img)}" alt="${esc(C.name)}（${esc(C.pair)}）"></div>
         <p class="char-name">${esc(C.name)}<small>${esc(C.pair)}</small></p>
