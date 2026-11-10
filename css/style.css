@@ -48,6 +48,15 @@ button { font: inherit; color: inherit; }
 @media (min-width: 600px) {
   .stage { height: min(100dvh - 32px, 900px); width: calc(min(100dvh - 32px, 900px) * 9 / 16); border: var(--px) solid #000; border-radius: 18px; }
 }
+/* 直向平板：滿版。內容區最寬 600px 置中，避免對話框和選項拉太寬 */
+@media (min-width: 600px) and (orientation: portrait) {
+  .stage { width: 100vw; height: 100vh; height: 100dvh; border: 0; border-radius: 0; container-type: size; }
+  .stage .view { padding-inline: max(16px, calc((100% - 600px) / 2)); }
+  .stage .hud { padding-inline: max(12px, calc((100% - 600px) / 2)); }
+  /* 封面圖（9:16）比螢幕窄，會以寬度填滿、上下置中裁切；播放鍵位置跟著圖算：
+     圖高 = 寬 × 16/9，鍵在圖的 76%～86% 高 → top = 50% + 0.26 × 圖高 */
+  .stage .cover-start { top: calc(50% + 46.2cqw); height: 17.8cqw; }  /* 加 .stage 提高優先，蓋過後面的基本設定 */
+}
 
 /* 場景背景（無美術的先用色塊暫代） */
 .bg-cover    { background-image: url("../assets/cover.gif"); }
@@ -175,6 +184,7 @@ button { font: inherit; color: inherit; }
   display: flex; flex-direction: column; gap: 6px; padding: 18px 14px;
   border: var(--px) dashed var(--ink); font-size: 16px; font-weight: 700;
 }
+.label-peel [hidden] { display: none; }  /* 上面的 display:flex 會蓋掉 hidden，這裡補回來 */
 .label-front { background: repeating-linear-gradient(45deg, #FFF7D6 0 10px, #FFEFB0 10px 20px); }
 .label-back { background: var(--hilite); border-style: solid; animation: pop .3s steps(4) both; }
 .label-back b { font-family: var(--f-pixel); font-weight: 400; font-size: 34px; color: var(--sky); }
