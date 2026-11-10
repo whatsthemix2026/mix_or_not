@@ -200,9 +200,10 @@
   }
 
   // ---------- 結果頁 ----------
-  // 動畫關閉或系統要求減少動態時，角色用靜態圖
+  // 系統要求減少動態時，角色用靜態圖。
+  // 網站的「動畫」開關只管轉場和對話框，不管角色（關掉時角色也停住，會讓人以為壞了）
   function stillOnly() {
-    return state.noAnim || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }
   function renderResult() {
     const answerList = QUESTION_IDS.map(id => state.answers[id]);
