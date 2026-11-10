@@ -201,6 +201,10 @@
   }
 
   // ---------- 結果頁 ----------
+  // 動畫關閉或系統要求減少動態時，角色用靜態圖
+  function stillOnly() {
+    return state.noAnim || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
   function renderResult() {
     const answerList = QUESTION_IDS.map(id => state.answers[id]);
     const res = computeResult(state.answers);
@@ -216,7 +220,7 @@
         <p class="res-eyebrow">你的吃法人格是</p>
         <h2 id="res-name">${T.emoji} ${esc(T.name)}</h2>
         ${C ? `
-        <div class="res-char"><img src="${esc(C.img)}" alt="${esc(C.name)}（${esc(C.pair)}）"></div>
+        <div class="res-char"><img src="${esc(stillOnly() ? (C.still || C.img) : C.img)}" alt="${esc(C.name)}（${esc(C.pair)}）"></div>
         <p class="char-name">${esc(C.name)}<small>${esc(C.pair)}</small></p>
         <p class="char-quote">「${esc(C.quote)}」</p>` : `
         <div class="res-char is-empty" aria-hidden="true"><span>${T.emoji}</span><small>角色圖待定</small></div>`}
@@ -315,8 +319,9 @@
     g.textAlign = "center"; g.fillStyle = "#10243A";
     g.font = font(44); g.fillText("你的吃法人格是", W / 2, 300);
     const C = T.character;
-    const img = C ? await new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = C.img; }) : null;
+    const img = C ? await new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = C.still || C.img; }) : null;
     if (img) {
+      g.imageSmoothingEnabled = false;   // 像素角色放大保持清晰
       const s = Math.min(380 / img.width, 330 / img.height);
       g.drawImage(img, W / 2 - img.width * s / 2, 325, img.width * s, img.height * s);
     } else {
