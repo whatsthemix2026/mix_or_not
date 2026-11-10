@@ -112,8 +112,7 @@
     stage.className = "stage bg-cover";
     view.innerHTML = `
       <h1 class="sr-only">What is the mix? 怎麼拌！？</h1>
-      <button class="cover-start" type="button" data-autofocus aria-label="開始測驗"></button>
-      <p class="cover-hint">點播放鍵開始測驗</p>`;
+      <button class="cover-start" type="button" aria-label="開始測驗"></button>`;
     view.querySelector(".cover-start").addEventListener("click", () => {
       state.answers = {};
       state.history = [];
@@ -133,7 +132,7 @@
 
   function renderScene(s) {
     view.innerHTML = `<div class="scene-card" role="status"><span>${esc(s.name)}</span></div>
-      <button type="button" class="scene-skip" data-autofocus>跳過 ▶</button>`;
+      <button type="button" class="scene-skip">跳過 ▶</button>`;
     view.querySelector(".scene-skip").addEventListener("click", nextStep);
     sceneTimer = setTimeout(nextStep, state.noAnim ? 350 : SCENE_HOLD_MS);
   }
