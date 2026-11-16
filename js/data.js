@@ -74,20 +74,21 @@ window.QUESTIONS = {
           ["心裡有標準答案", { G: 3 }],
           ["聽聽大家理由", { E: 3 }],
           ["每個人選自己喜歡的就好", { H: 3 }]] },
-  Q2:  { prompt: "蛋餅要加哪種醬？", options: [
+  // Q2～Q4 的題目與選項文字依 11/16 客戶新劇本（配分不變）
+  Q2:  { prompt: "此時你會選擇怎麼加呢？", options: [
           ["選平常習慣的", { G: 2 }],
           ["兩個都加", { F: 2 }],
           ["看今天心情", { H: 3, R: 3 }],
           ["都不加", { G: 3 }]] },
-  Q3:  { prompt: "小狗點了一個你從沒吃過的東西。人，你要吃看看嗎？", options: [
-          ["先吃看看再說", { F: 2 }],
-          ["我要吃一口", { E: 3 }],
+  Q3:  { prompt: "面對從沒吃過的東西，你會想吃看看嗎？", options: [
+          ["先看看再說", { F: 2 }],
+          ["我要吃一口！", { E: 3 }],
           ["問朋友好吃嗎", { H: 2 }],
           ["等他吃完覺得不錯再試", { G: 3 }]] },
-  Q4:  { prompt: "原本要去的店家沒有開", options: [
+  Q4:  { prompt: "常去的那家店，但今天剛好休息，你有什麼想法嗎？", options: [
           ["換一家差不多的", { G: 2 }],
-          ["今天試試大家沒吃過的", { E: 2 }],
-          ["研究附近有什麼", { R: 3 }],
+          ["今天就試大家沒吃過的！", { E: 2 }],
+          ["研究附近有什麼再決定", { R: 3 }],
           ["問大家想吃什麼", { H: 2 }]] },
   Q5:  { prompt: "你的咖哩飯第一口會怎麼吃？", options: [
           ["一口飯一口咖哩", { G: 2, R: 2 }],
@@ -138,55 +139,54 @@ window.QUESTIONS = {
 };
 window.QUESTION_IDS = Object.keys(window.QUESTIONS);
 
-// 劇情流程。bg 對應 css 的 .bg-xxx（尚無美術的場景用色塊暫代）
-// 步驟類型：cover 封面、dialog 對話、scene 場景轉場、q 題目、result 結果
+// 劇情流程（11/16 客戶新劇本）
+// 步驟類型：
+//   cover  封面
+//   vn     視覺小說頁：bg = assets/scenes/<bg>.png；lines 依序點一下顯示一句；
+//          有 id 的是題目頁，台詞講完後出現題目與選項（prompt 可覆寫題目文字）
+//          todo = 還沒有插圖，用暫代場景並標示
+//   trans  小轉場文字
+//   hatch  蛋裂開，孵出測驗結果的角色
+//   result 結果頁
+// who：主角／老闆＝說話者名稱；sign＝路牌文字；sfx＝音效；narr＝旁白
 window.SCRIPT = [
   { t: "cover" },
-  { t: "dialog", bg: "sky", lines: [
-      { who: "fish", text: "……誒？你醒了嗎。o O" },
-      { who: "me",   text: "。。。這是哪裡？" },
-      { who: "fish", text: "不知道誒，但你看起來餓了。我帶你去吃點東西吧？" }],
-    choices: ["跟著走", "被拉著一起去…"] },
+  { t: "vn", bg: "desert", lines: [
+      { who: "主角", text: "咦？這是哪裡？？？" },
+      { who: "主角", text: "有個路牌欸" },
+      { who: "sign", text: "「一路向東前進，將會遇到屬於自己的小精靈夥伴」" }] },
+  { t: "vn", bg: "market", lines: [
+      { who: "主角", text: "哇，真熱鬧" },
+      { who: "sfx",  text: "（滋——煎台的聲音）" },
+      { who: "主角", text: "哇！好香啊！原來是賣蛋餅的！" },
+      { who: "主角", text: "老闆，我要一份蛋餅！" },
+      { who: "老闆", text: "收到！馬上好！" }] },
+  { t: "vn", bg: "eggroll", id: "Q2", lines: [
+      { who: "narr", text: "蛋餅上桌了！桌上擺著一瓶番茄醬、一瓶醬油膏。" }] },
+  { t: "vn", bg: "exotic", id: "Q3", lines: [
+      { who: "主角", text: "哇喔～這攤位真奇特，好多我沒看過的食物，看起來充滿了異國風味" }] },
+  { t: "trans", text: "經過漫長的跋涉……" },
+  { t: "vn", bg: "placeholder", todo: "第 7 頁・故鄉", lines: [
+      { who: "主角", text: "這裡的空氣真令人懷念啊！真想回味以前常吃的餐廳" }] },
+  { t: "vn", bg: "placeholder", todo: "第 8 頁・餐廳沒開", id: "Q4", lines: [
+      { who: "主角", text: "可惡！今天居然休息了嗎！？" }] },
 
-  { t: "scene", name: "早餐店", bg: "breakfast" },
-  { t: "q", id: "Q1", bg: "breakfast", who: "cat", pre: "蛋餅該加什麼呢？咪也不確定……人呢？" },
-  { t: "q", id: "Q2", bg: "breakfast", who: "fish" },
-  { t: "dialog", bg: "breakfast", lines: [
-      { who: "cat",     text: "人……吃的東西好神奇！咪都沒吃過。" },
-      { who: "chicken", text: "原來還有這種吃法，人真聰明！！！" },
-      { who: "fish",    text: "人，原來喜歡這個。o O" }] },
-  { t: "q", id: "Q3", bg: "breakfast", who: "dog" },
-  { t: "q", id: "Q4", bg: "breakfast", who: "fish", pre: "人，今天原本想帶你去吃夥伴們常去的那家店，但今天剛好休息……" },
+  // 第 9～22 頁還沒畫：其餘題目先用暫代場景接上，等客戶插圖與台詞
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q1" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q5" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q6" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q7" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q8" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q9" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q10" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q11" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q12" },
+  { t: "vn", bg: "placeholder", todo: "第 9～22 頁", id: "Q13" },
 
-  { t: "scene", name: "咖哩店", bg: "curry" },
-  { t: "q", id: "Q5", bg: "curry", who: "narr" },
-  { t: "q", id: "Q6", bg: "curry", who: "cat" },
-  { t: "dialog", bg: "curry", lines: [
-      { who: "dog", text: "人……" },
-      { who: "dog", text: "人，小狗有個請求。" },
-      { who: "me",  text: "怎麼了！？" },
-      { who: "dog", text: "我還沒吃過人類傳說中的火鍋！我們一起去吧！" },
-      { who: "chicken", text: "咕咕咕！" }],
-    choices: ["出發！！"] },
-
-  { t: "scene", name: "火鍋店", bg: "hotpot" },
-  { t: "q", id: "Q7", bg: "hotpot", who: "dog" },
-  { t: "q", id: "Q8", bg: "hotpot", who: "chicken" },
-  { t: "q", id: "Q9", bg: "hotpot", who: "octopus" },
-  { t: "q", id: "Q10", bg: "hotpot", who: "octopus" },
-  { t: "dialog", bg: "hotpot", lines: [
-      { who: "octopus", text: "人，小章魚想去人類的夜市，邊吃小攤販邊散步。" }],
-    choices: ["走吧！！"] },
-
-  { t: "scene", name: "逛夜市", bg: "market" },
-  { t: "q", id: "Q11", bg: "market", who: "octopus" },
-  { t: "q", id: "Q12", bg: "icecream", who: "dog", pre: "人！！！這是什麼！！！……這是冰淇淋。" },
-  { t: "q", id: "Q13", bg: "market", who: "narr", pre: "最後一題，憑直覺！" },
-
-  { t: "dialog", bg: "sky", lines: [
-      { who: "narr", text: "（眨眼）" },
-      { who: "me",   text: "原來我在做夢啊……" },
-      { who: "dog",  text: "人，很高興遇見你。" }],
-    choices: ["看看我是哪一種人"] },
+  { t: "vn", bg: "eggstall", lines: [
+      { who: "主角", text: "難道路牌上指的就是這裡？？" },
+      { who: "主角", text: "原來那個路牌只是店家的廣告嗎？？？？" },
+      { who: "老闆", text: "你來啦！有個小傢伙等你很久了！" }] },
+  { t: "hatch" },
   { t: "result" }
 ];

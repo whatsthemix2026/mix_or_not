@@ -40,7 +40,7 @@
     try { localStorage.setItem("mix_noanim", state.noAnim ? "1" : "0"); } catch (e) {}
     syncToggles();
   });
-  musicBtn.addEventListener("click", () => {
+  function toggleMusic() {
     state.music = !state.music;
     if (state.music) {
       bgm.play().catch(() => { musicBtn.title = "音樂檔尚未提供"; });
@@ -48,7 +48,13 @@
       bgm.pause();
     }
     syncToggles();
-  });
+    const vm = view.querySelector(".vn-music");   // 視覺小說頁上的音符按鈕
+    if (vm) { vm.classList.toggle("is-off", !state.music); vm.setAttribute("aria-pressed", String(state.music)); }
+  }
+  musicBtn.addEventListener("click", toggleMusic);
+
+  // 題目步驟：舊的 q 型，或有 id 的視覺小說頁
+  const isQuestion = st => st.t === "q" || (st.t === "vn" && !!st.id);
 
   // ---------- 流程控制 ----------
   function go(next, push = true) {
@@ -59,29 +65,35 @@
   }
   const nextStep = () => go(state.step + 1);
 
-  backBtn.addEventListener("click", () => {
-    // 回到上一個題目步驟，並清掉它之後的答案
+  function goBackToPrevQuestion() {
+    // 回到上一個題目步驟，並清掉它之後的答案；回去時直接顯示題目，不重播台詞
     while (state.history.length) {
       const prev = state.history.pop();
-      if (SCRIPT[prev].t === "q") {
-        const idx = QUESTION_IDS.indexOf(SCRIPT[prev].id);
-        QUESTION_IDS.slice(idx).forEach(id => delete state.answers[id]);
+      if (isQuestion(SCRIPT[prev])) {
+        const st = SCRIPT[prev];
+        QUESTION_IDS.forEach(id => {
+          // 清掉這題，以及劇情順序上在它之後才回答的題目
+          if (id === st.id || !state.history.some(h => SCRIPT[h].id === id)) delete state.answers[id];
+        });
+        state.skipLines = true;
         go(prev, false);
         return;
       }
     }
-  });
+  }
+  backBtn.addEventListener("click", goBackToPrevQuestion);
 
   function answeredCount() { return Object.keys(state.answers).length; }
+  const hasPrevQuestion = () => state.history.some(i => isQuestion(SCRIPT[i]));
 
   function updateHud(s) {
-    const inQuiz = s.t !== "cover" && s.t !== "result";
-    hud.hidden = !inQuiz;
+    // 視覺小說頁、轉場、孵蛋用客戶畫的進度條，隱藏網站原本的
+    const ownHud = ["dialog", "scene", "q"].includes(s.t);
+    hud.hidden = !ownHud;
     const n = answeredCount();
     bar.style.width = (n / QUESTION_IDS.length * 100) + "%";
     progressText.textContent = `${n} / ${QUESTION_IDS.length}`;
-    const hasPrevQ = state.history.some(i => SCRIPT[i].t === "q");
-    backBtn.disabled = !hasPrevQ;
+    backBtn.disabled = !hasPrevQuestion();
   }
 
   // ---------- 畫面 ----------
@@ -103,7 +115,9 @@
     updateHud(s);
     setBg(s.bg);
     view.scrollTop = 0;
-    ({ cover: renderCover, dialog: renderDialog, scene: renderScene, q: renderQuestion, result: renderResult })[s.t](s);
+    ({ cover: renderCover, dialog: renderDialog, scene: renderScene, q: renderQuestion, result: renderResult,
+       vn: renderVN, trans: renderTrans, hatch: renderHatch })[s.t](s);
+    preloadNext();
     const focusEl = view.querySelector("[data-autofocus]");
     if (focusEl) focusEl.focus({ preventScroll: true });
   }
@@ -150,6 +164,129 @@
       <button type="button" class="scene-skip">跳過 ▶</button>`;
     view.querySelector(".scene-skip").addEventListener("click", nextStep);
     sceneTimer = setTimeout(nextStep, state.noAnim ? 350 : SCENE_HOLD_MS);
+  }
+
+  // ---------- 視覺小說頁（客戶新版：9:16 場景、上方進度條、下方對話框） ----------
+  const SCENE_DIR = "assets/scenes/";
+  const geoStyle = g => `left:${g.x}%;top:${g.y}%;width:${g.w}%;height:${g.h}%`;
+
+  function preloadNext() {
+    const n = SCRIPT[state.step + 1];
+    if (n && n.t === "vn") new Image().src = SCENE_DIR + n.bg + ".png";
+    if (n && n.t === "hatch") new Image().src = SCENE_DIR + "egg.png";
+  }
+
+  function vnFrame(bgName, inner) {
+    const G = window.SCENE_GEO;
+    const progress = answeredCount() / QUESTION_IDS.length * 100;
+    stage.className = "stage bg-vn";
+    // 用完整網址：CSS 變數裡的相對路徑會被當成相對於 css/ 資料夾
+    stage.style.setProperty("--vn-bg", `url("${new URL(SCENE_DIR + bgName + ".png", location.href).href}")`);
+    return `
+      <div class="vn-art">
+        <img class="vn-bg" src="${SCENE_DIR + bgName}.png" alt="">
+        <div class="vn-bar" style="${geoStyle(G.bar)}" role="progressbar" aria-label="作答進度"
+             aria-valuenow="${answeredCount()}" aria-valuemax="${QUESTION_IDS.length}"><i style="clip-path:inset(0 ${(100 - progress).toFixed(2)}% 0 0)"></i></div>
+        <button type="button" class="vn-hot vn-back" style="${geoStyle(G.back)}" aria-label="回上一題" ${hasPrevQuestion() ? "" : "disabled"}></button>
+        <button type="button" class="vn-hot vn-music${state.music ? "" : " is-off"}" style="${geoStyle(G.music)}"
+                aria-label="音樂開關" aria-pressed="${state.music}"></button>
+        ${inner}
+      </div>`;
+  }
+
+  function lineHtml(l) {
+    const who = l.who;
+    if (who === "sign") return `<p class="vn-line vn-sign">${esc(l.text)}</p>`;
+    if (who === "sfx") return `<p class="vn-line vn-sfx">${esc(l.text)}</p>`;
+    if (who === "narr") return `<p class="vn-line vn-narr">${esc(l.text)}</p>`;
+    return `<p class="vn-line"><span class="vn-who">${esc(who)}</span>${esc(l.text)}</p>`;
+  }
+
+  function renderVN(s) {
+    const G = window.SCENE_GEO;
+    const lines = s.lines || [];
+    const q = s.id ? QUESTIONS[s.id] : null;
+    // 從「上一題」回來時直接顯示題目
+    let i = state.skipLines && q ? lines.length : 0;
+    state.skipLines = false;
+
+    view.innerHTML = vnFrame(s.bg, `
+      ${s.todo ? `<span class="vn-todo">插圖待補：${esc(s.todo)}</span>` : ""}
+      <div class="vn-box" style="${geoStyle(G.text)}"><div class="vn-content"></div></div>`);
+    view.querySelector(".vn-back").addEventListener("click", e => { e.stopPropagation(); goBackToPrevQuestion(); });
+    view.querySelector(".vn-music").addEventListener("click", e => { e.stopPropagation(); toggleMusic(); });
+    const content = view.querySelector(".vn-content");
+
+    function show() {
+      if (i < lines.length) {                       // 一次一句，點一下下一句
+        content.innerHTML = lineHtml(lines[i]) + `<span class="vn-tap" aria-hidden="true">點一下繼續</span>`;
+        return;
+      }
+      if (!q) { nextStep(); return; }
+      const ctx = lines.length ? `<p class="vn-ctx">${esc(lines[lines.length - 1].text)}</p>` : "";
+      const chosen = state.answers[s.id];
+      content.innerHTML = `${ctx}<p class="vn-q">${esc(q.prompt)}</p>
+        <div class="vn-choices" role="group" aria-label="選項">
+          ${q.options.map((o, k) => `<button type="button" class="vn-choice${chosen === k ? " is-chosen" : ""}" data-i="${k}">
+            <span class="letter">[${LETTERS[k]}]</span>${esc(o[0])}</button>`).join("")}
+        </div>`;
+      content.querySelectorAll(".vn-choice").forEach(b => b.addEventListener("click", e => {
+        e.stopPropagation();
+        state.answers[s.id] = Number(b.dataset.i);
+        nextStep();
+      }));
+    }
+    // 點畫面任何地方（按鈕以外）＝下一句
+    view.querySelector(".vn-art").addEventListener("click", () => {
+      if (i < lines.length) { i++; show(); }
+    });
+    show();
+  }
+
+  // ---------- 小轉場 ----------
+  function renderTrans(s) {
+    stage.className = "stage bg-trans";
+    view.innerHTML = `<div class="trans-card" role="status"><p>${esc(s.text)}</p><span class="trans-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+      <button type="button" class="scene-skip">跳過 ▶</button>`;
+    const go2 = () => { clearTimeout(sceneTimer); nextStep(); };
+    view.querySelector(".scene-skip").addEventListener("click", go2);
+    view.querySelector(".trans-card").addEventListener("click", go2);
+    sceneTimer = setTimeout(nextStep, state.noAnim ? 600 : 2200);
+  }
+
+  // ---------- 蛋裂開：孵出測驗結果的角色 ----------
+  function renderHatch() {
+    const res = computeResult(state.answers);
+    const T = TYPES[res.type], C = T.character;
+    view.innerHTML = vnFrame("eggstall", `
+      <div class="hatch">
+        <div class="hatch-stage">
+          <img class="hatch-egg" src="${SCENE_DIR}egg.png" alt="精靈蛋">
+          <img class="hatch-char" src="${esc(C ? C.img : "")}" alt="" hidden>
+          <div class="hatch-flash" hidden></div>
+        </div>
+        <p class="hatch-text">咦？蛋在動……</p>
+        <button type="button" class="btn-main hatch-go" hidden>看看我的結果 ▶</button>
+      </div>`);
+    view.querySelector(".vn-back").addEventListener("click", e => { e.stopPropagation(); goBackToPrevQuestion(); });
+    view.querySelector(".vn-music").addEventListener("click", e => { e.stopPropagation(); toggleMusic(); });
+    const egg = view.querySelector(".hatch-egg"), ch = view.querySelector(".hatch-char");
+    const flash = view.querySelector(".hatch-flash"), text = view.querySelector(".hatch-text");
+    const btn = view.querySelector(".hatch-go");
+    let done = false;
+    function reveal() {
+      if (done) return;
+      done = true;
+      clearTimeout(sceneTimer);
+      flash.hidden = false;
+      egg.hidden = true;
+      if (C) ch.hidden = false;
+      text.textContent = `孵出來了！是「${C ? C.name : T.name}」！`;
+      btn.hidden = false;
+    }
+    sceneTimer = setTimeout(reveal, state.noAnim ? 400 : 2400);
+    view.querySelector(".hatch").addEventListener("click", reveal);   // 點一下可以直接孵
+    btn.addEventListener("click", e => { e.stopPropagation(); nextStep(); });
   }
 
   function renderQuestion(s) {
