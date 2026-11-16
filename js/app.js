@@ -110,9 +110,24 @@
 
   function renderCover() {
     stage.className = "stage bg-cover";
+    // 封面圖層位置來自 js/cover.js（tools/make_cover.py 產生）；每一行的字依序延遲，跳成波浪
+    const C = window.COVER, dir = "assets/cover/";
+    const pos = o => `left:${o.x}%;top:${o.y}%;width:${o.w}%`;
+    const order = { mix: 0, kanji: 0 };
+    const chars = C.layers.map(l => {
+      const i = order[l.line]++;
+      const delay = (l.line === "kanji" ? 0.9 : 0) + i * 0.09;   // 先跳 MIX OR NOT???，再跳 [怎麼拌]
+      return `<img class="cover-char line-${l.line}" src="${dir + l.src}" alt="" style="${pos(l)};--d:${delay.toFixed(2)}s">`;
+    }).join("");
     view.innerHTML = `
-      <h1 class="sr-only">What is the mix? 怎麼拌！？</h1>
-      <button class="cover-start" type="button" aria-label="開始測驗"></button>`;
+      <h1 class="sr-only">MIX OR NOT??? 怎麼拌</h1>
+      <div class="cover-art">
+        <img class="cover-bg" src="${dir + C.bg}" alt="">
+        ${chars}
+        <button class="cover-start" type="button" aria-label="開始測驗" style="${pos(C.start)};height:${C.start.h}%">
+          <img src="${dir + C.start.src}" alt="">
+        </button>
+      </div>`;
     view.querySelector(".cover-start").addEventListener("click", () => {
       state.answers = {};
       state.history = [];
