@@ -234,25 +234,33 @@ body.no-anim .cover-art .cover-start { animation: btn-bob 1.2s ease-in-out infin
 /* LINE 聊天樣式：一句一句往下疊，超過對話框就捲動 */
 .vn-chat { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin;
   display: flex; flex-direction: column; gap: 2.6cqw; padding: .6cqw 2.6cqw 2cqw .6cqw; }
-.chat-row { display: grid; grid-template-columns: 8.4cqw minmax(0, 1fr); column-gap: 2cqw; justify-items: start; }
+/* 像素框：用 box-shadow 在四邊各畫一格寬的邊，四個角留空，看起來是像素圓角 */
+.vn-chat { --px: .8cqw; }
+.px-box { box-shadow: var(--px) 0 0 0 var(--ink), calc(var(--px) * -1) 0 0 0 var(--ink),
+  0 var(--px) 0 0 var(--ink), 0 calc(var(--px) * -1) 0 0 var(--ink); }
+.chat-row { display: grid; grid-template-columns: 8.4cqw minmax(0, 1fr); column-gap: 3.4cqw; justify-items: start; }
 .chat-row.me { grid-template-columns: minmax(0, 1fr); justify-items: end; }
-.chat-ava { grid-row: span 2; align-self: start; width: 8.4cqw; height: 8.4cqw; border-radius: 50%;
-  display: grid; place-items: center; background: #F2A33A; color: #fff; font-size: 3.8cqw; font-weight: 700; }
-.chat-name { font-size: 3.1cqw; color: var(--muted); margin: 0 0 .8cqw 1cqw; }
-.chat-bubble { position: relative; margin: 0; max-width: 86%; padding: 2cqw 3.4cqw; border-radius: 4.4cqw;
-  background: #EDF0F3; color: var(--ink); font-size: 4.3cqw; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
-.chat-row .chat-bubble::before {                  /* 泡泡的小尾巴 */
-  content: ""; position: absolute; top: 2.4cqw; left: -1.8cqw;
-  border: 1.3cqw solid transparent; border-left: 0; border-right: 2.2cqw solid #EDF0F3;
-}
-.chat-row.me .chat-bubble { background: #8FE36B; }
-.chat-row.me .chat-bubble::before { left: auto; right: -1.8cqw; border-right: 0; border-left: 2.2cqw solid #8FE36B; }
-.chat-note { align-self: center; max-width: 92%; text-align: center; }
-.chat-note span { display: inline-block; background: #DDE4EB; color: #34495E; border-radius: 99px;
-  padding: 1cqw 3.4cqw; font-size: 3.5cqw; line-height: 1.5; }
+.chat-ava { grid-row: span 2; align-self: start; width: 8.4cqw; height: 8.4cqw; margin-top: var(--px);
+  display: grid; place-items: center; background: #F2A33A; color: #fff; font-family: var(--f-pixel); font-size: 4cqw; }
+.chat-name { font-family: var(--f-pixel); font-size: 3.2cqw; color: var(--muted); margin: 0 0 1.4cqw .4cqw; }
+.chat-bubble { --bb: #FFF6DA; position: relative; margin: 0 var(--px); max-width: 84%; padding: 1.8cqw 3cqw;
+  background: var(--bb); color: var(--ink); font-size: 4.3cqw; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-row.me .chat-bubble { --bb: #BDEBFF; margin-right: calc(var(--px) * 3); }
+.chat-row:not(.me) .chat-bubble { margin-left: calc(var(--px) * 2); }
+/* 像素小尾巴：##. / .#. 兩列，第三格蓋掉泡泡的邊，讓尾巴跟泡泡接起來 */
+.chat-bubble::before { content: ""; position: absolute; top: var(--px); left: calc(var(--px) * -3);
+  width: var(--px); height: var(--px); background: var(--ink);
+  box-shadow: var(--px) 0 0 0 var(--ink), calc(var(--px) * 2) 0 0 0 var(--bb),
+    var(--px) var(--px) 0 0 var(--ink), calc(var(--px) * 2) var(--px) 0 0 var(--bb); }
+.chat-row.me .chat-bubble::before { left: auto; right: calc(var(--px) * -3);
+  box-shadow: calc(var(--px) * -1) 0 0 0 var(--ink), calc(var(--px) * -2) 0 0 0 var(--bb),
+    calc(var(--px) * -1) var(--px) 0 0 var(--ink), calc(var(--px) * -2) var(--px) 0 0 var(--bb); }
+.chat-note { align-self: center; max-width: 90%; text-align: center; }
+.chat-note span { display: inline-block; margin: var(--px); background: #DDE4EB; color: #34495E;
+  padding: .8cqw 3cqw; font-size: 3.5cqw; line-height: 1.5; }
 .chat-sfx span { font-style: italic; }
-.chat-sign { align-self: center; max-width: 92%; font-family: var(--f-pixel); font-size: 4.2cqw; line-height: 1.5; color: var(--ink);
-  background: #F3E2B8; border: .5cqw solid #7A4A2A; padding: 2cqw 2.6cqw; }
+.chat-sign { align-self: center; max-width: 88%; margin: var(--px); font-family: var(--f-pixel); font-size: 4.2cqw; line-height: 1.5; color: var(--ink);
+  background: #F3E2B8; padding: 2cqw 2.6cqw; --ink: #7A4A2A; }
 .chat-q { display: flex; flex-direction: column; gap: 2.4cqw; margin-top: .6cqw; padding-top: 2.6cqw; border-top: .4cqw dashed #C9D3DD; }
 .is-new { animation: pop .25s steps(3) both; }
 .vn-tap { flex: none; align-self: flex-end; font-family: var(--f-pixel); font-size: 3cqw; color: var(--muted);

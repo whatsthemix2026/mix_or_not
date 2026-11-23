@@ -198,11 +198,11 @@
   function chatHtml(l, isNew) {
     const n = isNew ? " is-new" : "";
     const who = l.who;
-    if (who === "sign") return `<div class="chat-sign${n}">${esc(l.text)}</div>`;
-    if (who === "sfx" || who === "narr") return `<div class="chat-note chat-${who}${n}"><span>${esc(l.text)}</span></div>`;
-    if (who === "主角") return `<div class="chat-row me${n}"><p class="chat-bubble">${esc(l.text)}</p></div>`;
-    return `<div class="chat-row${n}"><span class="chat-ava" aria-hidden="true">${esc([...who][0] || "")}</span>
-      <span class="chat-name">${esc(who)}</span><p class="chat-bubble">${esc(l.text)}</p></div>`;
+    if (who === "sign") return `<div class="chat-sign px-box${n}">${esc(l.text)}</div>`;
+    if (who === "sfx" || who === "narr") return `<div class="chat-note chat-${who}${n}"><span class="px-box">${esc(l.text)}</span></div>`;
+    if (who === "主角") return `<div class="chat-row me${n}"><p class="chat-bubble px-box">${esc(l.text)}</p></div>`;
+    return `<div class="chat-row${n}"><span class="chat-ava px-box" aria-hidden="true">${esc([...who][0] || "")}</span>
+      <span class="chat-name">${esc(who)}</span><p class="chat-bubble px-box">${esc(l.text)}</p></div>`;
   }
 
   function renderVN(s) {
