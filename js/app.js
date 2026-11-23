@@ -53,8 +53,6 @@
   }
   musicBtn.addEventListener("click", toggleMusic);
 
-  // 題目步驟：舊的 q 型，或有 id 的視覺小說頁
-  const isQuestion = st => st.t === "q" || (st.t === "vn" && !!st.id);
 
   // ---------- 流程控制 ----------
   function go(next, push = true) {
@@ -65,26 +63,28 @@
   }
   const nextStep = () => go(state.step + 1);
 
-  function goBackToPrevQuestion() {
-    // 回到上一個題目步驟，並清掉它之後的答案；回去時直接顯示題目，不重播台詞
+  // 「頁」：上一頁會停的步驟（轉場、封面、沒台詞也沒題目的頁跳過）
+  const isPage = st => st.t === "hatch" || ["q", "dialog", "scene"].includes(st.t) ||
+    (st.t === "vn" && ((st.lines || []).length > 0 || !!st.id));
+  const hasPrevPage = () => state.history.some(h => isPage(SCRIPT[h]));
+
+  function goBackPage() {
+    // 回到上一頁（顯示到該頁最後一句／題目），並清掉那頁之後才回答的答案
     while (state.history.length) {
       const prev = state.history.pop();
-      if (isQuestion(SCRIPT[prev])) {
-        const st = SCRIPT[prev];
-        QUESTION_IDS.forEach(id => {
-          // 清掉這題，以及劇情順序上在它之後才回答的題目
-          if (id === st.id || !state.history.some(h => SCRIPT[h].id === id)) delete state.answers[id];
-        });
-        state.skipLines = true;
-        go(prev, false);
-        return;
-      }
+      const st = SCRIPT[prev];
+      if (!isPage(st)) continue;
+      QUESTION_IDS.forEach(id => {
+        if (id === st.id || !state.history.some(h => SCRIPT[h].id === id)) delete state.answers[id];
+      });
+      state.skipLines = true;
+      go(prev, false);
+      return;
     }
   }
-  backBtn.addEventListener("click", goBackToPrevQuestion);
+  backBtn.addEventListener("click", goBackPage);
 
   function answeredCount() { return Object.keys(state.answers).length; }
-  const hasPrevQuestion = () => state.history.some(i => isQuestion(SCRIPT[i]));
 
   function updateHud(s) {
     // 視覺小說頁、轉場、孵蛋用客戶畫的進度條，隱藏網站原本的
@@ -93,7 +93,7 @@
     const n = answeredCount();
     bar.style.width = (n / QUESTION_IDS.length * 100) + "%";
     progressText.textContent = `${n} / ${QUESTION_IDS.length}`;
-    backBtn.disabled = !hasPrevQuestion();
+    backBtn.disabled = !hasPrevPage();
   }
 
   // ---------- 畫面 ----------
@@ -187,60 +187,90 @@
         <img class="vn-bg" src="${SCENE_DIR + bgName}.png" alt="">
         <div class="vn-bar" style="${geoStyle(G.bar)}" role="progressbar" aria-label="作答進度"
              aria-valuenow="${answeredCount()}" aria-valuemax="${QUESTION_IDS.length}"><i style="clip-path:inset(0 ${(100 - progress).toFixed(2)}% 0 0)"></i></div>
-        <button type="button" class="vn-hot vn-back" style="${geoStyle(G.back)}" aria-label="回上一題" ${hasPrevQuestion() ? "" : "disabled"}></button>
+        <button type="button" class="vn-hot vn-back" style="${geoStyle(G.back)}" aria-label="上一頁" ${hasPrevPage() ? "" : "disabled"}></button>
         <button type="button" class="vn-hot vn-music${state.music ? "" : " is-off"}" style="${geoStyle(G.music)}"
                 aria-label="音樂開關" aria-pressed="${state.music}"></button>
         ${inner}
       </div>`;
   }
 
-  function lineHtml(l) {
+  // LINE 聊天樣式：主角在右邊（綠泡泡），其他人在左邊（頭像＋名字），旁白／音效置中，路牌是木牌
+  function chatHtml(l, isNew) {
+    const n = isNew ? " is-new" : "";
     const who = l.who;
-    if (who === "sign") return `<p class="vn-line vn-sign">${esc(l.text)}</p>`;
-    if (who === "sfx") return `<p class="vn-line vn-sfx">${esc(l.text)}</p>`;
-    if (who === "narr") return `<p class="vn-line vn-narr">${esc(l.text)}</p>`;
-    return `<p class="vn-line"><span class="vn-who">${esc(who)}</span>${esc(l.text)}</p>`;
+    if (who === "sign") return `<div class="chat-sign${n}">${esc(l.text)}</div>`;
+    if (who === "sfx" || who === "narr") return `<div class="chat-note chat-${who}${n}"><span>${esc(l.text)}</span></div>`;
+    if (who === "主角") return `<div class="chat-row me${n}"><p class="chat-bubble">${esc(l.text)}</p></div>`;
+    return `<div class="chat-row${n}"><span class="chat-ava" aria-hidden="true">${esc([...who][0] || "")}</span>
+      <span class="chat-name">${esc(who)}</span><p class="chat-bubble">${esc(l.text)}</p></div>`;
   }
 
   function renderVN(s) {
     const G = window.SCENE_GEO;
     const lines = s.lines || [];
     const q = s.id ? QUESTIONS[s.id] : null;
-    // 從「上一題」回來時直接顯示題目
-    let i = state.skipLines && q ? lines.length : 0;
+    if (!lines.length && !q) { nextStep(); return; }
+    // i＝目前顯示到第幾句；i === lines.length 代表題目已出現
+    const last = q ? lines.length : lines.length - 1;
+    let i = state.skipLines ? last : 0;              // 從「上一頁」回來：直接顯示整頁
     state.skipLines = false;
+    const actor = G.actors && G.actors[s.bg];
 
     view.innerHTML = vnFrame(s.bg, `
+      ${actor ? `<img class="vn-actor" src="${SCENE_DIR}actor_${s.bg}.png" style="${geoStyle(actor)}" alt="">` : ""}
       ${s.todo ? `<span class="vn-todo">插圖待補：${esc(s.todo)}</span>` : ""}
-      <div class="vn-box" style="${geoStyle(G.text)}"><div class="vn-content"></div></div>`);
-    view.querySelector(".vn-back").addEventListener("click", e => { e.stopPropagation(); goBackToPrevQuestion(); });
+      <div class="vn-box" style="${geoStyle(G.text)}">
+        <div class="vn-chat" role="log" aria-live="polite"></div>
+        <span class="vn-tap" aria-hidden="true">點一下繼續</span>
+      </div>`);
+    const backHot = view.querySelector(".vn-back");
+    const chat = view.querySelector(".vn-chat"), tap = view.querySelector(".vn-tap");
+    const actorEl = view.querySelector(".vn-actor");
     view.querySelector(".vn-music").addEventListener("click", e => { e.stopPropagation(); toggleMusic(); });
-    const content = view.querySelector(".vn-content");
 
-    function show() {
-      if (i < lines.length) {                       // 一次一句，點一下下一句
-        content.innerHTML = lineHtml(lines[i]) + `<span class="vn-tap" aria-hidden="true">點一下繼續</span>`;
-        return;
+    function jump() {                                 // 講下一句時蛋跳一下
+      if (!actorEl) return;
+      actorEl.classList.remove("is-jump");
+      void actorEl.offsetWidth;                       // 重新觸發動畫
+      actorEl.classList.add("is-jump");
+    }
+
+    function draw(isNew) {
+      let html = lines.slice(0, Math.min(i + 1, lines.length))
+        .map((l, k) => chatHtml(l, isNew && k === i)).join("");
+      const asking = q && i >= lines.length;
+      if (asking) {
+        const chosen = state.answers[s.id];
+        html += `<div class="chat-q${isNew ? " is-new" : ""}"><p class="vn-q">${esc(q.prompt)}</p>
+          <div class="vn-choices" role="group" aria-label="選項">
+            ${q.options.map((o, k) => `<button type="button" class="vn-choice${chosen === k ? " is-chosen" : ""}" data-i="${k}">
+              <span class="letter">[${LETTERS[k]}]</span>${esc(o[0])}</button>`).join("")}
+          </div></div>`;
       }
-      if (!q) { nextStep(); return; }
-      const ctx = lines.length ? `<p class="vn-ctx">${esc(lines[lines.length - 1].text)}</p>` : "";
-      const chosen = state.answers[s.id];
-      content.innerHTML = `${ctx}<p class="vn-q">${esc(q.prompt)}</p>
-        <div class="vn-choices" role="group" aria-label="選項">
-          ${q.options.map((o, k) => `<button type="button" class="vn-choice${chosen === k ? " is-chosen" : ""}" data-i="${k}">
-            <span class="letter">[${LETTERS[k]}]</span>${esc(o[0])}</button>`).join("")}
-        </div>`;
-      content.querySelectorAll(".vn-choice").forEach(b => b.addEventListener("click", e => {
+      chat.innerHTML = html;
+      tap.hidden = asking;
+      backHot.disabled = i === 0 && !hasPrevPage();
+      chat.querySelectorAll(".vn-choice").forEach(b => b.addEventListener("click", e => {
         e.stopPropagation();
         state.answers[s.id] = Number(b.dataset.i);
         nextStep();
       }));
+      // 超過對話框就捲到最新一句（往上滑可以看前面的）
+      chat.scrollTo({ top: chat.scrollHeight, behavior: isNew && !state.noAnim ? "smooth" : "auto" });
+      if (isNew && i < lines.length) jump();
     }
-    // 點畫面任何地方（按鈕以外）＝下一句
+
+    // 點畫面任何地方（按鈕以外）＝下一句；最後一句之後出題目或換頁
     view.querySelector(".vn-art").addEventListener("click", () => {
-      if (i < lines.length) { i++; show(); }
+      if (i < last) { i++; draw(true); }
+      else if (!q) nextStep();
     });
-    show();
+    // 上一頁：先一句一句退回，退到第一句再回到上一頁
+    backHot.addEventListener("click", e => {
+      e.stopPropagation();
+      if (i > 0) { i--; draw(false); } else goBackPage();
+    });
+    draw(true);
   }
 
   // ---------- 小轉場 ----------
@@ -268,7 +298,7 @@
         <p class="hatch-text">咦？蛋在動……</p>
         <button type="button" class="btn-main hatch-go" hidden>看看我的結果 ▶</button>
       </div>`);
-    view.querySelector(".vn-back").addEventListener("click", e => { e.stopPropagation(); goBackToPrevQuestion(); });
+    view.querySelector(".vn-back").addEventListener("click", e => { e.stopPropagation(); goBackPage(); });
     view.querySelector(".vn-music").addEventListener("click", e => { e.stopPropagation(); toggleMusic(); });
     const egg = view.querySelector(".hatch-egg"), ch = view.querySelector(".hatch-char");
     const flash = view.querySelector(".hatch-flash"), text = view.querySelector(".hatch-text");

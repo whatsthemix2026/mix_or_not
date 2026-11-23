@@ -5,6 +5,7 @@
   desert / market / eggroll / exotic / eggstall .png   9:16 場景（進度條清空，由網頁依進度填滿）
   placeholder.png   還沒畫的頁面用的暫代場景（雲朵天空＋地面＋對話框）
   bar_fill.png      進度條「滿格」那一條（只有青色格子，其他透明），網頁依進度裁切顯示
+  actor_desert.png  沙漠路牌上的蛋（從場景切出來，網頁上會跳）
   egg.png           第 24 頁的精靈蛋（依 23.jpg 的蛋配色重畫完整一顆）
 並產生 js/scenes.js：進度條、上一題、音樂、對話框文字區的位置（佔 9:16 的百分比）。
 
@@ -31,6 +32,10 @@ BAR = (100, 38, 649, 59)             # 進度條格子範圍（含一點邊）
 BACK = (10, 18, 86, 78)              # 左上「◀|」
 MUSIC = (695, 15, 758, 80)           # 右上音符
 TEXT = (84, 712, 690, 1318)          # 9:16 後對話框裡可放文字的區域
+# 會動的角色：從場景裡切出來另存一張透明圖，原位置補回天空；網頁上每講一句就跳一下
+# (x0, y0, x1, y1) 都對齊原圖 8px 的像素格（格子從 4 開始）
+ACTORS = {"desert": (436, 428, 516, 532)}   # 沙漠路牌上的蛋
+CELL = 8
 
 
 def to916(a):
@@ -57,9 +62,32 @@ def save(arr, name):
     Image.fromarray(arr).save(os.path.join(OUT, name), optimize=True)
 
 
+def is_sky(c):
+    r, g, b = (int(v) for v in c)
+    return b > 200 and g > 200 and r < 235
+
+
+def cut_actor(a, box, name):
+    """依 8px 格子取每格中心色，非天空的格子＝角色；角色存成透明 PNG，原位置每列補上左邊的天空色"""
+    x0, y0, x1, y1 = box
+    cols, rows = (x1 - x0) // CELL, (y1 - y0) // CELL
+    spr = np.zeros((rows, cols, 4), np.uint8)
+    for j in range(rows):
+        for i in range(cols):
+            cx, cy = x0 + i * CELL, y0 + j * CELL
+            c = a[cy + CELL // 2, cx + CELL // 2]
+            if not is_sky(c):
+                spr[j, i] = tuple(int(v) for v in c) + (255,)
+    # 整個框（左右上多 4px，吃掉 JPG 的殘影）每列換成框左邊的天空色；框裡只有天空和角色
+    a[y0 - 4:y1, x0 - 4:x1 + 4] = a[y0 - 4:y1, x0 - 8][:, None]
+    Image.fromarray(spr).resize((cols * CELL, rows * CELL), Image.NEAREST).save(os.path.join(OUT, f"actor_{name}.png"))
+
+
 for name, n in SCENES.items():
     a = np.array(Image.open(os.path.join(SRC, f"{n}.jpg")).convert("RGB"))
     assert a.shape[:2] == (H0, W0), (n, a.shape)
+    if name in ACTORS:
+        cut_actor(a, ACTORS[name], name)
     save(to916(empty_bar(a.copy())), f"{name}.png")
 
 # 進度條滿格（取沙漠那張，只留青色格子）
@@ -99,7 +127,8 @@ def pct(box):
             "w": round((x1 - x0) / W * 100, 3), "h": round((y1 - y0) / H * 100, 3)}
 
 
-geo = {"bar": pct(BAR), "back": pct(BACK), "music": pct(MUSIC), "text": pct(TEXT)}
+geo = {"bar": pct(BAR), "back": pct(BACK), "music": pct(MUSIC), "text": pct(TEXT),
+       "actors": {k: pct(v) for k, v in ACTORS.items()}}
 with open(os.path.join(ROOT, "js", "scenes.js"), "w", encoding="utf-8") as f:
     f.write("// 由 tools/make_scenes.py 自動產生，請勿手改。位置為佔 9:16 場景的百分比。\n")
     f.write("window.SCENE_GEO = " + json.dumps(geo, ensure_ascii=False, indent=1) + ";\n")

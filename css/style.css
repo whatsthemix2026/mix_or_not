@@ -230,17 +230,46 @@ body.no-anim .cover-art .cover-start { animation: btn-bob 1.2s ease-in-out infin
   background: rgba(16, 36, 58, .75); color: #fff; font-family: var(--f-pixel);
   font-size: 3.4cqw; padding: .6cqw 2.4cqw; white-space: nowrap; pointer-events: none;
 }
-.vn-box { position: absolute; display: flex; }
-.vn-content { flex: 1; display: flex; flex-direction: column; gap: 2.2cqw; min-width: 0; overflow-y: auto; }
-.vn-line { margin: 0; font-size: 4.7cqw; font-weight: 700; line-height: 1.6; color: var(--ink); animation: pop .25s steps(3) both; }
-.vn-who { display: block; font-family: var(--f-pixel); font-weight: 400; font-size: 3.8cqw; color: #0099DB; margin-bottom: .6cqw; }
-.vn-sign { font-family: var(--f-pixel); font-weight: 400; background: #F3E2B8; border: .5cqw solid #7A4A2A; padding: 2cqw 2.6cqw; }
-.vn-sfx { font-style: italic; color: var(--muted); font-weight: 400; }
-.vn-narr { font-weight: 400; color: #34495E; }
-.vn-tap { margin-top: auto; align-self: flex-end; font-family: var(--f-pixel); font-size: 3cqw; color: var(--muted);
-  margin-right: 7cqw; animation: blink 1.1s steps(2) infinite; }
+.vn-box { position: absolute; display: flex; flex-direction: column; }
+/* LINE 聊天樣式：一句一句往下疊，超過對話框就捲動 */
+.vn-chat { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin;
+  display: flex; flex-direction: column; gap: 2.6cqw; padding: .6cqw 2.6cqw 2cqw .6cqw; }
+.chat-row { display: grid; grid-template-columns: 8.4cqw minmax(0, 1fr); column-gap: 2cqw; justify-items: start; }
+.chat-row.me { grid-template-columns: minmax(0, 1fr); justify-items: end; }
+.chat-ava { grid-row: span 2; align-self: start; width: 8.4cqw; height: 8.4cqw; border-radius: 50%;
+  display: grid; place-items: center; background: #F2A33A; color: #fff; font-size: 3.8cqw; font-weight: 700; }
+.chat-name { font-size: 3.1cqw; color: var(--muted); margin: 0 0 .8cqw 1cqw; }
+.chat-bubble { position: relative; margin: 0; max-width: 86%; padding: 2cqw 3.4cqw; border-radius: 4.4cqw;
+  background: #EDF0F3; color: var(--ink); font-size: 4.3cqw; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-row .chat-bubble::before {                  /* 泡泡的小尾巴 */
+  content: ""; position: absolute; top: 2.4cqw; left: -1.8cqw;
+  border: 1.3cqw solid transparent; border-left: 0; border-right: 2.2cqw solid #EDF0F3;
+}
+.chat-row.me .chat-bubble { background: #8FE36B; }
+.chat-row.me .chat-bubble::before { left: auto; right: -1.8cqw; border-right: 0; border-left: 2.2cqw solid #8FE36B; }
+.chat-note { align-self: center; max-width: 92%; text-align: center; }
+.chat-note span { display: inline-block; background: #DDE4EB; color: #34495E; border-radius: 99px;
+  padding: 1cqw 3.4cqw; font-size: 3.5cqw; line-height: 1.5; }
+.chat-sfx span { font-style: italic; }
+.chat-sign { align-self: center; max-width: 92%; font-family: var(--f-pixel); font-size: 4.2cqw; line-height: 1.5; color: var(--ink);
+  background: #F3E2B8; border: .5cqw solid #7A4A2A; padding: 2cqw 2.6cqw; }
+.chat-q { display: flex; flex-direction: column; gap: 2.4cqw; margin-top: .6cqw; padding-top: 2.6cqw; border-top: .4cqw dashed #C9D3DD; }
+.is-new { animation: pop .25s steps(3) both; }
+.vn-tap { flex: none; align-self: flex-end; font-family: var(--f-pixel); font-size: 3cqw; color: var(--muted);
+  margin: .6cqw 7cqw 0 0; animation: blink 1.1s steps(2) infinite; }
+.vn-tap[hidden] { display: none; }
 @keyframes blink { 50% { opacity: 0; } }
-.vn-ctx { margin: 0; font-size: 3.6cqw; color: var(--muted); line-height: 1.5; }
+/* 從場景切出來的角色（沙漠的蛋）：每講一句跳一下 */
+.vn-actor { position: absolute; image-rendering: pixelated; pointer-events: none; transform-origin: 50% 100%; }
+.vn-actor.is-jump { animation: egg-jump .6s both; }
+@keyframes egg-jump {
+  0%   { transform: none; animation-timing-function: steps(2); }
+  15%  { transform: scale(1.12, .86); animation-timing-function: steps(3); }
+  45%  { transform: translateY(-60%) scale(.92, 1.1); animation-timing-function: steps(3); }
+  78%  { transform: none; animation-timing-function: steps(2); }
+  88%  { transform: scale(1.08, .92); }
+  100% { transform: none; }
+}
 .vn-q { margin: 0; font-size: 4.8cqw; font-weight: 700; line-height: 1.45; color: var(--ink); }
 .vn-choices { display: flex; flex-direction: column; gap: 2cqw; }
 .vn-choice {
