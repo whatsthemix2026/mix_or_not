@@ -149,6 +149,7 @@ window.QUESTION_IDS = Object.keys(window.QUESTIONS);
 //   hatch  蛋裂開，孵出測驗結果的角色
 //   result 結果頁
 // who：主角／老闆＝說話者名稱；sign＝路牌文字；sfx＝音效；narr＝旁白
+// sound：這句出現時另外播的音效（assets/audio/sfx-<名稱>.mp3），例如 griddle＝煎台
 window.SCRIPT = [
   { t: "cover" },
   { t: "vn", bg: "desert", lines: [
@@ -157,7 +158,7 @@ window.SCRIPT = [
       { who: "sign", text: "「一路向東前進，將會遇到屬於自己的小精靈夥伴」" }] },
   { t: "vn", bg: "market", lines: [
       { who: "主角", text: "哇，真熱鬧" },
-      { who: "sfx",  text: "（滋——煎台的聲音）" },
+      { who: "sfx",  text: "（滋——煎台的聲音）", sound: "griddle" },
       { who: "主角", text: "哇！好香啊！原來是賣蛋餅的！" },
       { who: "主角", text: "老闆，我要一份蛋餅！" },
       { who: "老闆", text: "收到！馬上好！" }] },

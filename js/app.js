@@ -15,9 +15,9 @@
     step: 0,
     history: [],     // 走過的步驟（返回上一題用）
     answers: {},     // { Q1: 選項索引 }
-    noAnim: false,
-    music: false
+    noAnim: false
   };
+  const Sound = window.Sound;
   let sceneTimer = null;
 
   // ---------- 設定（動畫、音樂） ----------
@@ -26,37 +26,45 @@
   } catch (e) {}
   const animBtn = $("#btn-anim");
   const musicBtn = $("#btn-music");
-  const bgm = $("#bgm");
 
   function syncToggles() {
     document.body.classList.toggle("no-anim", state.noAnim);
     animBtn.setAttribute("aria-pressed", String(!state.noAnim));
     animBtn.textContent = state.noAnim ? "動畫 關" : "動畫 開";
-    musicBtn.setAttribute("aria-pressed", String(state.music));
-    musicBtn.textContent = state.music ? "♪ 開" : "♪ 關";
+    musicBtn.setAttribute("aria-pressed", String(Sound.enabled));
+    musicBtn.textContent = Sound.enabled ? "♪ 開" : "♪ 關";
   }
   animBtn.addEventListener("click", () => {
     state.noAnim = !state.noAnim;
     try { localStorage.setItem("mix_noanim", state.noAnim ? "1" : "0"); } catch (e) {}
     syncToggles();
   });
+  // 聲音開關：背景音樂和音效一起開關，記在瀏覽器裡
   function toggleMusic() {
-    state.music = !state.music;
-    if (state.music) {
-      bgm.play().catch(() => { musicBtn.title = "音樂檔尚未提供"; });
-    } else {
-      bgm.pause();
-    }
+    Sound.setEnabled(!Sound.enabled);
     syncToggles();
     const vm = view.querySelector(".vn-music");   // 視覺小說頁上的音符按鈕
-    if (vm) { vm.classList.toggle("is-off", !state.music); vm.setAttribute("aria-pressed", String(state.music)); }
+    if (vm) { vm.classList.toggle("is-off", !Sound.enabled); vm.setAttribute("aria-pressed", String(Sound.enabled)); }
   }
   musicBtn.addEventListener("click", toggleMusic);
+  syncToggles();
+
+  // 按鈕音效：按下＝點擊聲；電腦上滑鼠移到按鈕上＝滑過聲
+  document.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (b && !b.disabled) Sound.sfx("click");
+  }, true);
+  document.addEventListener("pointerover", e => {
+    if (e.pointerType !== "mouse") return;
+    const b = e.target.closest("button");
+    if (b && !b.disabled && !(e.relatedTarget && b.contains(e.relatedTarget))) Sound.sfx("hover");
+  });
 
 
   // ---------- 流程控制 ----------
   function go(next, push = true) {
     clearTimeout(sceneTimer);
+    Sound.stopSfx();                                   // 換頁時停掉還在響的音效（例如煎台）
     if (push) state.history.push(state.step);
     state.step = next;
     render();
@@ -114,6 +122,7 @@
     const s = SCRIPT[state.step];
     updateHud(s);
     setBg(s.bg);
+    Sound.music(s.t === "cover" ? "title" : "game");   // 封面放「主畫面」，其他頁放「遊戲中」
     view.scrollTop = 0;
     ({ cover: renderCover, dialog: renderDialog, scene: renderScene, q: renderQuestion, result: renderResult,
        vn: renderVN, trans: renderTrans, hatch: renderHatch })[s.t](s);
@@ -188,8 +197,8 @@
         <div class="vn-bar" style="${geoStyle(G.bar)}" role="progressbar" aria-label="作答進度"
              aria-valuenow="${answeredCount()}" aria-valuemax="${QUESTION_IDS.length}"><i style="clip-path:inset(0 ${(100 - progress).toFixed(2)}% 0 0)"></i></div>
         <button type="button" class="vn-hot vn-back" style="${geoStyle(G.back)}" aria-label="上一頁" ${hasPrevPage() ? "" : "disabled"}></button>
-        <button type="button" class="vn-hot vn-music${state.music ? "" : " is-off"}" style="${geoStyle(G.music)}"
-                aria-label="音樂開關" aria-pressed="${state.music}"></button>
+        <button type="button" class="vn-hot vn-music${Sound.enabled ? "" : " is-off"}" style="${geoStyle(G.music)}"
+                aria-label="聲音開關" aria-pressed="${Sound.enabled}"></button>
         ${inner}
       </div>`;
   }
@@ -257,7 +266,11 @@
       }));
       // 超過對話框就捲到最新一句（往上滑可以看前面的）
       chat.scrollTo({ top: chat.scrollHeight, behavior: isNew && !state.noAnim ? "smooth" : "auto" });
-      if (isNew && i < lines.length) jump();
+      if (isNew) {
+        Sound.sfx("line");                              // 每出現一句（或題目）
+        if (i < lines.length && lines[i].sound) Sound.sfx(lines[i].sound);   // 台詞附帶的音效，例如煎台
+        if (i < lines.length) jump();
+      }
     }
 
     // 點畫面任何地方（按鈕以外）＝下一句；最後一句之後出題目或換頁
@@ -308,12 +321,14 @@
       if (done) return;
       done = true;
       clearTimeout(sceneTimer);
+      Sound.sfx("hatch");
       flash.hidden = false;
       egg.hidden = true;
       if (C) ch.hidden = false;
       text.textContent = `孵出來了！是「${C ? C.name : T.name}」！`;
       btn.hidden = false;
     }
+    Sound.sfx("wobble");                               // 蛋在動
     sceneTimer = setTimeout(reveal, state.noAnim ? 400 : 2400);
     view.querySelector(".hatch").addEventListener("click", reveal);   // 點一下可以直接孵
     btn.addEventListener("click", e => { e.stopPropagation(); nextStep(); });
