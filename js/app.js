@@ -145,7 +145,8 @@
     view.innerHTML = `
       <h1 class="sr-only">MIX OR NOT??? 怎麼拌</h1>
       <div class="cover-art">
-        <img class="cover-bg" src="${dir + C.bg}" alt="">
+        <img class="cover-bg cover-sky" src="${dir + C.bg}" alt="">
+        <img class="cover-bg cover-sea" src="${dir + C.bg}" alt="" aria-hidden="true">
         ${chars}
         <button class="cover-start" type="button" aria-label="開始測驗" style="${pos(C.start)};height:${C.start.h}%">
           <img src="${dir + C.start.src}" alt="">
@@ -185,6 +186,65 @@
     if (n && n.t === "hatch") new Image().src = SCENE_DIR + "egg.png";
   }
 
+  // 場景特效（位置、圖檔都來自 js/scenes.js，由 tools/make_scenes.py 產生）
+  function fxHtml(bg) {
+    const F = (window.SCENE_GEO.fx || {})[bg] || {};
+    const src = f => SCENE_DIR + f;
+    let h = "";
+    if (F.clouds) {                                   // 雲：一條可以左右接起來的雲層，慢慢往右飄
+      const c = F.clouds;
+      h += `<div class="fx-clouds" style="top:${c.y}%;height:${c.h}%"><i style="background-image:url('${src(c.src)}')"></i></div>`;
+      if (c.fg) h += `<img class="fx-layer" src="${src(c.fg)}" style="left:0;width:100%;top:${c.y}%;height:${c.h}%" alt="">`;
+    }
+    if (F.lamps) {                                    // CLOSED 窗裡的吊燈
+      h += F.lamps.map((p, i) => `<i class="fx-lamp" style="left:${p.x}%;top:${p.y}%;--d:${(i * 0.43).toFixed(2)}s"></i>`).join("");
+    }
+    if (F.swing) h += `<img class="fx-layer fx-swing" src="${src(F.swing.src)}" style="${geoStyle(F.swing)}" alt="">`;
+    if (F.leds) h += `<img class="fx-layer fx-leds" src="${src(F.leds.src)}" style="${geoStyle(F.leds)}" alt="">`;
+    if (F.sauce) {                                    // 蛋餅：淋上去的醬（先藏起來）和兩瓶醬
+      Object.entries(F.sauce.sauces).forEach(([k, g]) => {
+        h += `<img class="fx-layer fx-sauce" data-k="${k}" src="${src(g.src)}" style="${geoStyle(g)}" alt="">`;
+      });
+      Object.entries(F.sauce.bottles).forEach(([k, g]) => {
+        h += `<img class="fx-layer fx-bottle" data-k="${k}" src="${src(g.src)}" style="${geoStyle(g)}" alt="">`;
+      });
+    }
+    return h;
+  }
+
+  // 蛋餅頁選完 Q2 的動作：A 醬油膏、B 兩種都加、C 兩瓶輪流跳一跳再隨機淋一種、D 兩瓶搖頭
+  function sauceReact(choice) {
+    const bottle = k => view.querySelector(`.fx-bottle[data-k="${k}"]`);
+    const sauce = k => view.querySelector(`.fx-sauce[data-k="${k}"]`);
+    if (!bottle("soy") || !bottle("ketchup") || !Element.prototype.animate) return Promise.resolve();
+    function pour(k) {
+      const b = bottle(k), sc = sauce(k);
+      const br = b.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+      const cx = br.left + br.width / 2, cy = br.top + br.height / 2;
+      // 瓶子倒過來（瓶口朝下），瓶口沿著醬的方向從左下移到右上
+      const at = (x, y) => `translate(${x - cx}px, ${y - br.height * 0.45 - cy}px) rotate(160deg)`;
+      const p0 = at(sr.left + sr.width * 0.04, sr.bottom - sr.height * 0.3);
+      const p1 = at(sr.right - sr.width * 0.04, sr.top + sr.height * 0.3);
+      sc.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)" }],
+                 { delay: 360, duration: 1200, fill: "both", easing: "steps(14)" });
+      return b.animate([{ transform: "none" }, { transform: p0, offset: 0.18 }, { transform: p1, offset: 0.82 },
+                        { transform: "none" }], { duration: 1900, easing: "ease-in-out" }).finished;
+    }
+    const hop = k => bottle(k).animate([{ transform: "none" }, { transform: "translateY(-28%)" }, { transform: "none" }],
+                                       { duration: 300, easing: "ease-out" }).finished;
+    const shake = k => bottle(k).animate(
+      [0, -14, 14, -10, 8, 0].map(d => ({ transform: `rotate(${d}deg)` })), { duration: 700 }).finished;
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    if (choice === 0) return pour("soy");
+    if (choice === 1) return pour("ketchup").then(() => pour("soy"));
+    if (choice === 2) {
+      let p = Promise.resolve();
+      ["soy", "ketchup", "soy", "ketchup", "soy", "ketchup"].forEach(k => { p = p.then(() => hop(k)); });
+      return p.then(() => pour(Math.random() < 0.5 ? "soy" : "ketchup"));
+    }
+    return Promise.all([shake("soy"), wait(120).then(() => shake("ketchup"))]);
+  }
+
   function vnFrame(bgName, inner) {
     const G = window.SCENE_GEO;
     const progress = answeredCount() / QUESTION_IDS.length * 100;
@@ -194,6 +254,8 @@
     return `
       <div class="vn-art">
         <img class="vn-bg" src="${SCENE_DIR + bgName}.png" alt="">
+        ${fxHtml(bgName)}
+        <div class="vn-dither" style="${geoStyle(G.box)};--tint:${((G.fx || {})[bgName] || {}).tint || "#c9d3dd"}"></div>
         <div class="vn-bar" style="${geoStyle(G.bar)}" role="progressbar" aria-label="作答進度"
              aria-valuenow="${answeredCount()}" aria-valuemax="${QUESTION_IDS.length}"><i style="clip-path:inset(0 ${(100 - progress).toFixed(2)}% 0 0)"></i></div>
         <button type="button" class="vn-hot vn-back" style="${geoStyle(G.back)}" aria-label="上一頁" ${hasPrevPage() ? "" : "disabled"}></button>
@@ -261,8 +323,15 @@
       backHot.disabled = i === 0 && !hasPrevPage();
       chat.querySelectorAll(".vn-choice").forEach(b => b.addEventListener("click", e => {
         e.stopPropagation();
-        state.answers[s.id] = Number(b.dataset.i);
-        nextStep();
+        const k = Number(b.dataset.i);
+        state.answers[s.id] = k;
+        if (s.react === "sauce" && !state.noAnim) {     // 蛋餅頁：先演淋醬，再換頁
+          const here = state.step;
+          chat.querySelectorAll(".vn-choice").forEach(x => { x.disabled = true; x.classList.toggle("is-chosen", x === b); });
+          sauceReact(k).then(() => setTimeout(() => { if (state.step === here) nextStep(); }, 350));
+        } else {
+          nextStep();
+        }
       }));
       // 超過對話框就捲到最新一句（往上滑可以看前面的）
       chat.scrollTo({ top: chat.scrollHeight, behavior: isNew && !state.noAnim ? "smooth" : "auto" });

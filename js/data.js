@@ -162,14 +162,14 @@ window.SCRIPT = [
       { who: "主角", text: "哇！好香啊！原來是賣蛋餅的！" },
       { who: "主角", text: "老闆，我要一份蛋餅！" },
       { who: "老闆", text: "收到！馬上好！" }] },
-  { t: "vn", bg: "eggroll", id: "Q2", lines: [
+  { t: "vn", bg: "eggroll", id: "Q2", react: "sauce", lines: [
       { who: "narr", text: "蛋餅上桌了！桌上擺著一瓶番茄醬、一瓶醬油膏。" }] },
   { t: "vn", bg: "exotic", id: "Q3", lines: [
       { who: "主角", text: "哇喔～這攤位真奇特，好多我沒看過的食物，看起來充滿了異國風味" }] },
   { t: "trans", text: "經過漫長的跋涉……" },
-  { t: "vn", bg: "placeholder", todo: "第 7 頁・故鄉", lines: [
+  { t: "vn", bg: "hometown", lines: [
       { who: "主角", text: "這裡的空氣真令人懷念啊！真想回味以前常吃的餐廳" }] },
-  { t: "vn", bg: "placeholder", todo: "第 8 頁・餐廳沒開", id: "Q4", lines: [
+  { t: "vn", bg: "closed", id: "Q4", lines: [
       { who: "主角", text: "可惡！今天居然休息了嗎！？" }] },
 
   // 第 9～22 頁還沒畫：其餘題目先用暫代場景接上，等客戶插圖與台詞
