@@ -15,6 +15,9 @@
  *
  * 刪除資料（只在管理後台）：刪除某天以前、或某一天的作答；刪除前先複製到「備份」分頁，
  * 每次操作記在「操作紀錄」分頁。
+ *
+ * 拼豆鏡子照片：POST { photo, key }，密語存在指令碼屬性 PHOTO_KEY；照片存雲端硬碟「拼豆照片」資料夾，
+ * 滿 7 天後由每日排程 cleanupPhotos 關閉連結並移到垃圾桶（第一次要手動執行 installTriggers 建立排程）。
  */
 
 const SHEET_NAME = 'responses';
@@ -96,10 +99,67 @@ function isValid_(d) {
   return d.answers.every((a, i) => Number.isInteger(a) && a >= 0 && a < OPTION_COUNTS[i]);
 }
 
+// ==================== 拼豆鏡子照片 ====================
+// POST { photo: base64 JPG, key: PHOTO_KEY, name } → 存到雲端硬碟「拼豆照片」資料夾，開放「知道連結的人可檢視」，
+// 回傳 { ok, url }。每天由 cleanupPhotos 把超過 PHOTO_DAYS 天的照片關閉連結並移到垃圾桶。
+// 只認 installTriggers 自己建立、記在 PHOTO_FOLDER_ID 的資料夾，不用名稱找：
+// 免得哪天有同名資料夾，裡面的檔案被當成過期照片清掉。
+const PHOTO_FOLDER = '拼豆照片';
+const PHOTO_DAYS = 7;
+
+function photoFolder_() {
+  const id = PropertiesService.getScriptProperties().getProperty('PHOTO_FOLDER_ID');
+  if (!id) throw new Error('請先執行 installTriggers');
+  return DriveApp.getFolderById(id);
+}
+
+function handlePhoto_(d) {
+  const key = PropertiesService.getScriptProperties().getProperty('PHOTO_KEY');
+  if (!key || d.key !== key) return json_({ ok: false, error: 'forbidden' });
+  let bytes;
+  try { bytes = Utilities.base64Decode(d.photo); } catch (err) { return json_({ ok: false, error: 'bad photo' }); }
+  if (bytes.length > 8 * 1024 * 1024) return json_({ ok: false, error: 'too large' });
+  if ((bytes[0] & 255) !== 0xFF || (bytes[1] & 255) !== 0xD8) return json_({ ok: false, error: 'not jpg' });
+  const name = String(d.name || ('拼豆_' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd_HHmmss') + '.jpg')).slice(0, 80);
+  const file = photoFolder_().createFile(Utilities.newBlob(bytes, 'image/jpeg', name));
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return json_({ ok: true, url: 'https://drive.google.com/file/d/' + file.getId() + '/view' });
+}
+
+// 每天執行一次：超過 PHOTO_DAYS 天的照片先關閉連結，再移到垃圾桶（垃圾桶 30 天後 Google 會自動清除）
+function cleanupPhotos() {
+  const limit = Date.now() - PHOTO_DAYS * 24 * 3600 * 1000;
+  const files = photoFolder_().getFiles();
+  let n = 0;
+  while (files.hasNext()) {
+    const f = files.next();
+    if (f.getDateCreated().getTime() >= limit) continue;
+    f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
+    f.setTrashed(true);
+    n++;
+  }
+  if (n) log_('清除照片', '移除 ' + n + ' 張超過 ' + PHOTO_DAYS + ' 天的照片');
+}
+
+// 只要在編輯器手動執行一次：建立照片資料夾和每天凌晨的自動清除排程（重複執行也不會建第二個）
+function installTriggers() {
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('PHOTO_FOLDER_ID')) {
+    props.setProperty('PHOTO_FOLDER_ID', DriveApp.createFolder(PHOTO_FOLDER).getId());
+  }
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'cleanupPhotos')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('cleanupPhotos').timeBased().everyDays(1).atHour(3).create();
+  photoFolder_();
+  log_('建立排程', '每天 03:00 清除超過 ' + PHOTO_DAYS + ' 天的照片');
+}
+
 function doPost(e) {
   let d;
   try { d = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: 'bad json' }); }
   if (d && d.admin) return handleAdmin_(d);
+  if (d && d.photo) return handlePhoto_(d);
   if (!isValid_(d)) return json_({ ok: false, error: 'invalid' });
   if (!isAccepting_()) return json_({ ok: false, error: 'paused' });
 
